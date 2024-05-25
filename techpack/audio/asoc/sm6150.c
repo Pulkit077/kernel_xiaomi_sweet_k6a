@@ -5121,6 +5121,10 @@ err:
 	return ret;
 }
 
+#ifdef CONFIG_SND_SOC_FS15XX
+extern void fsm_add_codec_controls(struct snd_soc_codec *codec);
+#endif
+
 static int msm_int_audrx_init(struct snd_soc_pcm_runtime *rtd)
 {
 	int ret = 0;
@@ -5130,6 +5134,10 @@ static int msm_int_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	struct snd_info_entry *entry;
 	struct msm_asoc_mach_data *pdata =
 				snd_soc_card_get_drvdata(rtd->card);
+
+#ifdef CONFIG_SND_SOC_FS15XX
+	fsm_add_codec_controls(codec);
+#endif
 
 	ret = snd_soc_add_codec_controls(codec, msm_int_snd_controls,
 				ARRAY_SIZE(msm_int_snd_controls));

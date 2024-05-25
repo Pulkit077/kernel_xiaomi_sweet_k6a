@@ -320,7 +320,7 @@ int dsi_panel_get_phy_props(struct dsi_panel *panel,
 int dsi_panel_get_dfps_caps(struct dsi_panel *panel,
 			    struct dsi_dfps_capabilities *dfps_caps);
 
-#ifdef CONFIG_MACH_XIAOMI_SWEET
+#if defined(CONFIG_MACH_XIAOMI_SWEET) || defined(CONFIG_MACH_XIAOMI_SWEET2)
 void dsi_panel_gamma_mode_change(struct dsi_panel *panel,
                         struct dsi_display_mode *adj_mode);
 #endif
@@ -393,4 +393,16 @@ u32 dsi_panel_get_fod_dim_alpha(struct dsi_panel *panel);
 
 int dsi_panel_apply_hbm_mode(struct dsi_panel *panel);
 
+int dsi_panel_write_cmd_set(struct dsi_panel *panel,
+				struct dsi_panel_cmd_set *cmd_sets);
+
+int dsi_panel_read_cmd_set(struct dsi_panel *panel,
+				struct dsi_read_config *read_config);
+
+int dsi_panel_db_ic_enable(struct dsi_panel *panel);
+
+int dsi_panel_mipi_reg_show(struct dsi_panel *panel);
+
+ssize_t dsi_panel_mipi_reg_write(struct dsi_panel *panel,
+				char *buf, size_t count);
 #endif /* _DSI_PANEL_H_ */

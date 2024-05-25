@@ -20,7 +20,10 @@
 #include <linux/regulator/consumer.h>
 #include <linux/interrupt.h>
 #include <linux/delay.h>
-
+//wt wangxu2 add for HONGMI-146197 of IMEI protect 2022.07.01 begin
+#include <linux/workqueue.h>
+#include <linux/slab.h>
+//wt wangxu2 add for HONGMI-146197 of IMEI protect 2022.07.01 end
 #include <linux/msm-bus-board.h>
 #include <linux/msm-bus.h>
 #include <linux/dma-mapping.h>
@@ -46,6 +49,69 @@
 #define desc_to_data(d) container_of(d, struct pil_tz_data, desc)
 #define subsys_to_data(d) container_of(d, struct pil_tz_data, subsys_desc)
 
+//wt wangxu2 add for HONGMI-146197 of IMEI protect 2022.07.01 begin
+#define STR_NV_SIGNATURE_DESTROYED "CRITICAL_DATA_CHECK_FAILED"
+
+static char last_modem_sfr_reason[MAX_SSR_REASON_LEN] = "none";
+static struct kobject *checknv_kobj;
+static struct kset *checknv_kset;
+
+static const struct sysfs_ops checknv_sysfs_ops = {
+};
+
+static void kobj_release(struct kobject *kobj)
+{
+	kfree(kobj);
+}
+static struct kobj_type checknv_ktype = {
+	.sysfs_ops = &checknv_sysfs_ops,
+	.release = kobj_release,
+};
+static void checknv_kobj_clean(struct work_struct *work)
+{
+	kobject_uevent(checknv_kobj, KOBJ_REMOVE);
+	kobject_put(checknv_kobj);
+	kset_unregister(checknv_kset);
+}
+static void checknv_kobj_create(struct work_struct *work)
+{
+	int ret;
+	if (checknv_kset != NULL) {
+		pr_err("checknv_kset is not NULL, should clean up.");
+		kobject_uevent(checknv_kobj, KOBJ_REMOVE);
+		kobject_put(checknv_kobj);
+	}
+	checknv_kobj = kzalloc(sizeof(struct kobject), GFP_KERNEL);
+	if (!checknv_kobj) {
+		pr_err("kobject alloc failed.");
+		return;
+	}
+	if (checknv_kset == NULL) {
+		checknv_kset = kset_create_and_add("checknv_errimei", NULL, NULL);
+		if (!checknv_kset) {
+			pr_err("kset creation failed.");
+			goto free_kobj;
+		}
+	}
+	checknv_kobj->kset = checknv_kset;
+	ret = kobject_init_and_add(checknv_kobj, &checknv_ktype, NULL, "%s", "errimei");
+	if (ret) {
+		pr_err("%s: Error in creation kobject", __func__);
+		goto del_kobj;
+	}
+        pr_err("wangxu start");
+	kobject_uevent(checknv_kobj, KOBJ_ADD);
+        pr_err("wangxu start success");
+	return;
+del_kobj:
+	kobject_put(checknv_kobj);
+	kset_unregister(checknv_kset);
+free_kobj:
+	kfree(checknv_kobj);
+}
+static DECLARE_DELAYED_WORK(create_kobj_work, checknv_kobj_create);
+static DECLARE_WORK(clean_kobj_work, checknv_kobj_clean);
+//wt wangxu2 add for HONGMI-146197 of IMEI protect 2022.07.01 end
 /**
  * struct reg_info - regulator info
  * @reg: regulator handle
@@ -867,6 +933,9 @@ static void log_failure_reason(const struct pil_tz_data *d)
 	}
 
 	strlcpy(reason, smem_reason, min(size, (size_t)MAX_SSR_REASON_LEN));
+        //wt wangxu2 add for HONGMI-146197 of IMEI protect 2022.07.01 begin
+	strlcpy(last_modem_sfr_reason, smem_reason, min(size, (size_t)MAX_SSR_REASON_LEN));
+        //wt wangxu2 add for HONGMI-146197 of IMEI protect 2022.07.01 begin
 	pr_err("%s subsystem failure reason: %s.\n", name, reason);
 }
 
@@ -939,6 +1008,18 @@ static void subsys_crash_shutdown(const struct subsys_desc *subsys)
 		mdelay(CRASH_STOP_ACK_TO_MS);
 	}
 }
+//wt wangxu2 add for HONGMI-146197 of IMEI protect 2022.07.01 begin
+static void check_nv(void *dev_id)
+{
+	struct pil_tz_data *d = subsys_to_data(dev_id);
+	if (strnstr(last_modem_sfr_reason, STR_NV_SIGNATURE_DESTROYED, strlen(last_modem_sfr_reason))) {
+		pr_err("errimei_dev: the NV has been destroyed, should restart to recovery\n");
+		schedule_delayed_work(&create_kobj_work, msecs_to_jiffies(1*1000));
+	} else {
+		subsystem_restart_dev(d->subsys);
+	}
+}
+//wt wangxu2 add for HONGMI-146197 of IMEI protect 2022.07.01 begin
 
 static irqreturn_t subsys_err_fatal_intr_handler (int irq, void *dev_id)
 {
@@ -952,7 +1033,8 @@ static irqreturn_t subsys_err_fatal_intr_handler (int irq, void *dev_id)
 	}
 	subsys_set_crash_status(d->subsys, CRASH_STATUS_ERR_FATAL);
 	log_failure_reason(d);
-	subsystem_restart_dev(d->subsys);
+        //wt wangxu2 add for HONGMI-146197 of IMEI protect 2022.07.01
+	check_nv(dev_id);
 
 	return IRQ_HANDLED;
 }
@@ -970,7 +1052,8 @@ static irqreturn_t subsys_wdog_bite_irq_handler(int irq, void *dev_id)
 							__func__);
 	subsys_set_crash_status(d->subsys, CRASH_STATUS_WDOG_BITE);
 	log_failure_reason(d);
-	subsystem_restart_dev(d->subsys);
+        //wt wangxu2 add for HONGMI-146197 of IMEI protect 2022.07.01 begin
+	check_nv(dev_id);
 
 	return IRQ_HANDLED;
 }

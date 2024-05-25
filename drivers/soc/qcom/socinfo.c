@@ -1870,7 +1870,7 @@ uint32_t get_hw_version_platform(void)
 		return HARDWARE_PLATFORM_PHOENIX;
 	else if (hw_type == HW_PLATFORM_F4L)
 		return HARDWARE_PLATFORM_TOCO;
-	else if (hw_type == HW_PLATFORM_K9A)
+   	else if (hw_type == HW_PLATFORM_K9A)
 		return HARDWARE_PLATFORM_COURBET;
 	else if (hw_type == HW_PLATFORM_K6)
 		return HARDWARE_PLATFORM_SWEET;
@@ -1899,24 +1899,6 @@ uint32_t get_hw_version_build(void)
 	return (version & HW_BUILD_VERSION_MASK) >> HW_BUILD_VERSION_SHIFT;
 }
 EXPORT_SYMBOL(get_hw_version_build);
-
-static char hwversion[6];
-static int __init parse_hwversion(char *str)
-{
-	strncpy(hwversion, str, sizeof(hwversion));
-	pr_info("socinfo: hwversion:%s,strlen-is: %d\n", hwversion,strlen(hwversion));
-	return 0;
-}
-__setup("androidboot.hwversion=", parse_hwversion);
-
-int get_platform_hwversion(char *buf, int len)
-{
-	pr_info("socinfo: hwversion:%s\n", hwversion);
-	strncpy(buf, hwversion, len);
-	pr_info("socinfo: buf:%s\n", buf);
-	return 0;
-}
-EXPORT_SYMBOL(get_platform_hwversion);
 
 int __init socinfo_init(void)
 {

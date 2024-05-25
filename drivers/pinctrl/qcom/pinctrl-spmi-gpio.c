@@ -119,6 +119,7 @@
 #define PMIC_GPIO_CONF_ANALOG_PASS		(PIN_CONFIG_END + 4)
 #define PMIC_GPIO_CONF_DTEST_BUFFER		(PIN_CONFIG_END + 5)
 
+
 /* The index of each function in pmic_gpio_functions[] array */
 enum pmic_gpio_func_index {
 	PMIC_GPIO_FUNC_INDEX_NORMAL,
@@ -687,16 +688,15 @@ static void pmic_gpio_config_dbg_show(struct pinctrl_dev *pctldev,
 		if (pad->analog_pass)
 			seq_puts(s, " analog-pass");
 		else
-			seq_printf(s, " %-4s",
-					pad->output_enabled ? "out" : "in");
+			seq_printf(s, " %-4s", pad->output_enabled ? "out" : "in");
 		seq_printf(s, " %-7s", pmic_gpio_functions[function]);
 		seq_printf(s, " vin-%d", pad->power_source);
 		seq_printf(s, " %-27s", biases[pad->pullup]);
 		seq_printf(s, " %-10s", buffer_types[pad->buffer_type]);
 		seq_printf(s, " %-4s", pad->out_value ? "high" : "low");
 		seq_printf(s, " %-7s", strengths[pad->strength]);
-		seq_printf(s, " atest-%d", pad->atest);
-		seq_printf(s, " dtest-%d", pad->dtest_buffer);
+		//seq_printf(s, " atest-%d", pad->atest);
+		//seq_printf(s, " dtest-%d", pad->dtest_buffer);
 	}
 }
 
